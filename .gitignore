@@ -87,3 +87,9 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Eclipse project files
+*.classpath
+*.project
+*.pydevproject
+*.settings/
