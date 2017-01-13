@@ -16,10 +16,10 @@ import requests
 import numpy as np
 import pandas as pd
 
-from emoncms import Emoncms, Input, Feed
+from emonpy import emoncms
 
 
-class HttpEmoncms(Emoncms):
+class HttpEmoncms(emoncms.Emoncms):
     
     def __init__(self, address, apikey, timezone='UTC'):
         self.address = address
@@ -40,11 +40,11 @@ class HttpEmoncms(Emoncms):
         return requests.get(self.address + action, params=parameters)
 
 
-class HttpInput(Input):
+class HttpInput(emoncms.Input):
     pass
 
 
-class HttpFeed(Feed):
+class HttpFeed(emoncms.Feed):
     
     def data(self, start, end, interval, timezone='UTC'):
         logger.debug('Requesting data from feed %i', self.feedid)

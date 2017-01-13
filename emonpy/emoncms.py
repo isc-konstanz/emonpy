@@ -12,7 +12,7 @@
 import logging
 logger = logging.getLogger('emonpy.emoncms')
 
-import http
+from emonpy import http
 
 
 class Emoncms(object):

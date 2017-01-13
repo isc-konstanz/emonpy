@@ -40,9 +40,9 @@ AUTHOR = 'ISC Konstanz'
 MAINTAINER_EMAIL = 'adrian.minde@isc-konstanz.de'
 URL = 'https://github.com/isc-konstanz/emonpy'
 
-INSTALL_REQUIRES = ['numpy >= 1.12.0',
-                    'pandas >= 0.19.0',
-                    'requests >= 2.12.4']
+INSTALL_REQUIRES = ['numpy >= 1.11.0',
+                    'pandas >= 0.18.0',
+                    'requests']
 
 PACKAGES = ['emonpy']
 
