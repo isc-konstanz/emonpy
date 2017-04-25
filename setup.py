@@ -10,7 +10,6 @@
     and other environmental data as part of the OpenEnergyMonitor project.
     
 """
-import re
 from os import path
 
 try:
@@ -20,21 +19,16 @@ except ImportError:
 
 here = path.abspath(path.dirname(__file__))
 
-# Get the long description from the README file
-with open(path.join(here, 'emonpy/', '__init__.py'), 'r') as f:
-    VERSION = re.search(r'^__version__\s*=\s*[\'"]([^\'"]*)[\'"]',
-                        f.read(), re.MULTILINE).group(1)
 
-if not VERSION:
-    raise RuntimeError('Cannot find version information')
+VERSION = '0.1.2'
 
 DESCRIPTION = 'Emonpy provides a set of functions to communicate with an emoncms webserver.'
 
 # Get the long description from the README file
 with open(path.join(here, 'README.md')) as f:
-    LONG_DESCRIPTION = f.read()
+    DESCRIPTION_LONG = f.read()
 
-DISTNAME = 'emonpy'
+NAME = 'emonpy'
 LICENSE = 'LGPLv3'
 AUTHOR = 'ISC Konstanz'
 MAINTAINER_EMAIL = 'adrian.minde@isc-konstanz.de'
@@ -46,22 +40,22 @@ INSTALL_REQUIRES = ['numpy >= 1.11.0',
 
 PACKAGES = ['emonpy']
 
-setuptools_kwargs = {
+SETUPTOOLS_KWARGS = {
     'zip_safe': False,
     'scripts': [],
     'include_package_data': True
 }
 
 setup(
-    name=DISTNAME,
-    version=VERSION,
-    license=LICENSE,
-    description=DESCRIPTION,
-    long_description=LONG_DESCRIPTION,
-    author=AUTHOR,
-    author_email=MAINTAINER_EMAIL,
-    url=URL,
-    packages=PACKAGES,
-    install_requires=INSTALL_REQUIRES,
-    **setuptools_kwargs
+    name = NAME,
+    version = VERSION,
+    license = LICENSE,
+    description = DESCRIPTION,
+    long_description = DESCRIPTION_LONG,
+    author = AUTHOR,
+    author_email = MAINTAINER_EMAIL,
+    url = URL,
+    packages = PACKAGES,
+    install_requires = INSTALL_REQUIRES,
+    **SETUPTOOLS_KWARGS
 )

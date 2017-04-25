@@ -10,10 +10,9 @@
     
 """
 
-__version__ = '0.1.1'
-
 import logging
 logging.basicConfig(level=logging.INFO)
 
 from . import emoncms
 from .emoncms import Emoncms
+from .emoncms import EmoncmsException

@@ -12,8 +12,8 @@
 import logging
 logger = logging.getLogger('emonpy.emoncms')
 
-from emonpy import http
-
+import datetime
+import pytz as tz
 
 class Emoncms(object):
     """
@@ -46,13 +46,16 @@ class Emoncms(object):
         str or unicode
     """
 
-    def __init__(self, address, apikey, timezone='UTC', method='HTTP'):
+    def __init__(self, address, api_key, timezone='UTC', method='HTTP'):
+        
         if method.lower() == 'http':
+            from . import http
             self.__class__ = http.HttpEmoncms
         else:
             raise ValueError('Invalid emoncms connection method "{}"'.method)
         
-        self.__init__(address, apikey, timezone)
+        self.__init__(address, api_key, timezone)
+        
     
     def input(self, inputid, node, name):
         """
@@ -80,6 +83,58 @@ class Emoncms(object):
             :class:`Input`
         """
         raise NotImplementedError()
+        
+    
+    def create_feed(self, name, datatype, engine, options=None, tag=''):
+        """
+        Create a new feed on the emoncms web server and its 
+        corresponding :class:`Feed` reference object.
+        
+        :param name:
+            the unique name of the feed.
+        :type name:
+            str
+        
+        :param tag:
+            the optional descriptional tag of the feed
+        :type tag:
+            str
+        
+        :param datatype:
+            the datatype of the feed.
+        :type datatype:
+            int
+        
+        :param engine:
+            the engine of the feed.
+        :type engine:
+            int
+        
+        :param options:
+            the optional options, related to the selected engine.
+        :type options:
+            dict
+        
+        :returns: 
+            the feed object for the newly created reference.
+        :rtype: 
+            :class:`Feed`
+        """
+        raise NotImplementedError()
+        
+    
+    def list_feeds(self):
+        """
+        Acquire a list of all available :class:`Feed` reference objects, 
+        enabling e.g. to retrieve logged emoncms feed data.
+                
+        :returns: 
+            the list of feed objects, available for the authenticated emoncms user.
+        :rtype: 
+            lsit of :class:`Feed`
+        """
+        raise NotImplementedError()
+        
     
     def feed(self, feedid):
         """
@@ -97,19 +152,45 @@ class Emoncms(object):
             :class:`Feed`
         """
         raise NotImplementedError()
-
+    
 
 class Input(object):
+    
     def __init__(self, connection, node, name):
+        
         self.connection = connection
         self.node = node
         self.name = name
-
+    
 
 class Feed(object):
-    def __init__(self, connection, feedid):
+    
+    def __init__(self, connection, feed):
+        
         self.connection = connection
-        self.feedid = feedid
+        
+        if type(feed) is int:
+            self._id = feed
+            
+        elif type(feed) is str:
+            self._id = int(feed.replace('"', ''))
+            
+        elif type(feed) is dict:
+            self._id = int(feed['id'])
+            self.userid = int(feed['userid'])
+            self.name = feed['name']
+            self.tag = feed['tag']
+            self.datatype = int(feed['datatype'])
+            self.engine = int(feed['engine'])
+            self.processes = feed['processList']
+            
+            if feed['time'] is not None:
+                self.time = tz.timezone(connection.timezone).localize(datetime.datetime.fromtimestamp(int(feed['time'])))
+                self.value = float(feed['value'])
+            
+        else:
+            raise EmoncmsException('Invalid feed type "{0}" passed while instantiation: {1}'.format(type(feed), str(feed)))
+        
     
     def data(self, start, end, interval, timezone='UTC'):
         """
@@ -144,3 +225,27 @@ class Feed(object):
             :class:`pandas.Series`
         """
         raise NotImplementedError()
+        
+    
+    def update(self, value, time):
+        """
+        Updates a single feed data point.
+            
+        :param value:
+            the data point value that should be updated.
+        :type value:
+            float
+        
+        :param time:
+            the time, a data point should be updated at.
+        :type time:
+            :class:`pandas.tslib.Timestamp` or datetime
+        """
+        raise NotImplementedError()
+    
+
+class EmoncmsException(Exception):
+    """
+    Raise if any parsing or connection problem regarding emoncms occurs.
+    
+    """
