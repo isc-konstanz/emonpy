@@ -90,7 +90,20 @@ class HttpEmoncms(Emoncms):
     
 
 class HttpInput(Input):
-    pass
+    
+    def bulk_update(self, update, opts = None):#diff, node_id, values
+        data = []
+        for u in update:
+            d = []
+            d.append(u[0])
+            d.append(u[1])
+            for v in u[2]:
+                d.append(v)
+            data.append(d)
+        parameters = {'data': str(data).strip()}
+        if opts is not None:
+            parameters.update(opts)
+        self.connection._request('input/bulk?', parameters)
     
 
 class HttpFeed(Feed):
@@ -129,7 +142,7 @@ class HttpFeed(Feed):
     def update(self, value, time):
         logger.debug('Requesting to update data point at %s of feed %i: %d', time.strftime('%d.%m.%Y %H:%M:%S'), self._id, value)
         
-        timestamp = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9
+        timestamp = pd.to_datetime(time).tz_localize(self.connection.timezone).value//10**9
         
         parameters = {'id': self._id, 
                       'time': timestamp, 
