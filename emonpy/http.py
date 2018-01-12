@@ -87,23 +87,45 @@ class HttpEmoncms(Emoncms):
             
         except ValueError:
             raise EmoncmsException("Invalid JSON String returned to be parsed: " + response_text)
-    
 
-class HttpInput(Input):
-    
-    def bulk_update(self, update, opts = None):#diff, node_id, values
+
+    def bulk_post(self, post):
         data = []
-        for u in update:
+        for n in post.nodes:
             d = []
-            d.append(u[0])
-            d.append(u[1])
-            for v in u[2]:
+            d.append(n.diff)
+            d.append(n.node_id)
+            for v in n.values:
                 d.append(v)
             data.append(d)
         parameters = {'data': str(data).strip()}
-        if opts is not None:
-            parameters.update(opts)
-        self.connection._request('input/bulk?', parameters)
+        if post.offset is not None:
+            parameters.update({'offset': post.offset})
+        if post.sent_at is not None:
+            parameters.update({'sentat': post.sent_at})
+        if post.time is not None:
+            parameters.update({'time': post.time})
+            
+        return self._request('input/bulk?', parameters)
+
+
+class BulkPost(list):
+    def __init__(self, offset=None, sent_at=None, time=None, *nodes):
+        self.offset = offset
+        self.sent_at = sent_at
+        self.time = time
+        self.nodes = nodes
+    
+class Node():
+    def __init__(self, diff, node_id, *values):
+        self.diff = diff
+        self.node_id = node_id
+        self.values = values
+    
+
+class HttpInput(Input):
+    #full json
+    pass
     
 
 class HttpFeed(Feed):
