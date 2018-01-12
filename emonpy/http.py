@@ -109,11 +109,11 @@ class HttpEmoncms(Emoncms):
 
 
 class BulkPost(list):
-    def __init__(self, offset=None, sent_at=None, time=None, *nodes):
+    def __init__(self, nodes, offset=None, sent_at=None, time=None):
+        self.nodes = nodes
         self.offset = offset
         self.sent_at = sent_at
         self.time = time
-        self.nodes = nodes
     
 class Node():
     def __init__(self, diff, node_id, *values):
