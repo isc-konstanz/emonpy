@@ -124,9 +124,12 @@ class Node():
 
 class HttpInput(Input):
 
-    def post(self, values):
-        parameters = {"fulljson": json.dumps(values)}
-        return self.connection._request('input/post/' + str(self.node) + '?', parameters)
+    def post(self, values, time=None):
+        parameters = {"fulljson": json.dumps(values),
+                      "node": str(self.node)}
+        if time is not None:
+            parameters["time"] = time
+        return self.connection._request('input/post?', parameters)
     
 
 class HttpFeed(Feed):
