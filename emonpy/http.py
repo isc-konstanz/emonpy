@@ -98,14 +98,13 @@ class HttpEmoncms(Emoncms):
             for v in n.values:
                 d.append(v)
             data.append(d)
-        parameters = {'data': str(data).strip()}
+        parameters = {'data': json.dumps(data)}
         if post.offset is not None:
             parameters.update({'offset': post.offset})
         if post.sent_at is not None:
             parameters.update({'sentat': post.sent_at})
         if post.time is not None:
             parameters.update({'time': post.time})
-            
         return self._request('input/bulk?', parameters)
 
 
@@ -124,8 +123,10 @@ class Node():
     
 
 class HttpInput(Input):
-    #full json
-    pass
+
+    def post(self, values):
+        parameters = {"fulljson": json.dumps(values)}
+        return self.connection._request('input/post/' + str(self.node) + '?', parameters)
     
 
 class HttpFeed(Feed):
