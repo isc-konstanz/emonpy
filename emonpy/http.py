@@ -65,6 +65,13 @@ class HttpEmoncms(Emoncms):
         return HttpFeed(self, feedid)
         
     
+    def fetch(self, feeds):
+        logger.debug('Requesting to fetch last values of feed list')
+        
+        parameters = {'ids': ','.join(str(feed._id) for feed in feeds.values())}
+        return self._request_json('feed/fetch.json?', parameters)
+        
+    
     def _request(self, action, parameters={}):
         parameters['apikey'] = self.apikey
         
@@ -124,19 +131,24 @@ class Node():
 
 class HttpInput(Input):
 
-    def post(self, values, time=None):
-        parameters = {"fulljson": json.dumps(values),
-                      "node": str(self.node)}
+    def post(self, value, time=None):
+        logger.debug('Requesting to post data to input %s of node %s: %d', self.node, self.node, value)
+        
+        parameters = {"fulljson": json.dumps({self.name: value})}
         if time is not None:
-            parameters["time"] = time
-        return self.connection._request('input/post?', parameters)
-    
+            # Convert times to UTC UNIX timestamps
+            parameters["time"] = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9 #.astype(np.int64)//10**6
+        
+        response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters)
+        
+        return response['success']
+        
 
 class HttpFeed(Feed):
     
     def data(self, start, end, interval, timezone='UTC'):
         logger.debug('Requesting data from feed %i', self._id)
-
+        
         # Convert times to UTC UNIX timestamps
         startstamp = pd.to_datetime(start).tz_convert(self.connection.timezone).value//10**6 #.astype(np.int64)//10**6
         endstamp = pd.to_datetime(end).tz_convert(self.connection.timezone).value//10**6 #.astype(np.int64)//10**6
@@ -150,17 +162,20 @@ class HttpFeed(Feed):
         
         datastr = response.text
         dataarr = np.array(eval(datastr))
-        data = pd.Series(data=dataarr[:,1], index=dataarr[:,0], name='data')
-        
-        logger.debug('Received %d values from feed %i',len(data), self._id)
-        
-        # The first and last values returned will be the nearest values to 
-        # the specified timestamps and can be outside of the actual interval.
-        # Those will be dropped to avoid additional index values when resampling
-        data = data.ix[startstamp:endstamp]
-        data.index = pd.to_datetime(data.index,unit='ms')
-        data.index = data.index.tz_localize(self.connection.timezone).tz_convert(timezone)
-        data.index.name = 'time'
+        if len(dataarr) > 0:
+            data = pd.Series(data=dataarr[:,1], index=dataarr[:,0], name='data')
+            
+            logger.debug('Received %d values from feed %i',len(data), self._id)
+            
+            # The first and last values returned will be the nearest values to 
+            # the specified timestamps and can be outside of the actual interval.
+            # Those will be dropped to avoid additional index values when resampling
+            data = data.ix[startstamp:endstamp]
+            data.index = pd.to_datetime(data.index,unit='ms')
+            data.index = data.index.tz_localize(self.connection.timezone).tz_convert(timezone)
+            data.index.name = 'time'
+        else:
+            data = pd.Series(name='data')
         
         return data
         
