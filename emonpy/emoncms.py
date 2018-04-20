@@ -47,7 +47,6 @@ class Emoncms(object):
     """
 
     def __init__(self, address, api_key, timezone='UTC', method='HTTP'):
-        
         if method.lower() == 'http':
             from . import http
             self.__class__ = http.HttpEmoncms
@@ -57,15 +56,10 @@ class Emoncms(object):
         self.__init__(address, api_key, timezone)
         
     
-    def input(self, inputid, node, name):
+    def input(self, node, name):
         """
         Acquire a :class:`Input` reference object, enabling e.g. to post
         data to an emoncms input.
-        
-        :param inputid:
-            the unique identifier of the input.
-        :type id:
-            int
         
         :param node:
             the unique node identifier of the input.
@@ -157,8 +151,8 @@ class Emoncms(object):
 class Input(object):
     
     def __init__(self, connection, node, name):
-        
         self.connection = connection
+        
         self.node = node
         self.name = name
     
@@ -166,15 +160,14 @@ class Input(object):
 class Feed(object):
     
     def __init__(self, connection, feed):
-        
         self.connection = connection
         
         if type(feed) is int:
             self._id = feed
-            
+        
         elif type(feed) is str:
             self._id = int(feed.replace('"', ''))
-            
+        
         elif type(feed) is dict:
             self._id = int(feed['id'])
             self.userid = int(feed['userid'])
@@ -182,7 +175,11 @@ class Feed(object):
             self.tag = feed['tag']
             self.datatype = int(feed['datatype'])
             self.engine = int(feed['engine'])
-            self.processes = feed['processList']
+            
+            if 'processList' in feed: 
+                self.processes = feed['processList']
+            else:
+                self.processes = ''
             
             if feed['time'] is not None:
                 self.time = tz.timezone(connection.timezone).localize(datetime.datetime.fromtimestamp(int(feed['time'])))
