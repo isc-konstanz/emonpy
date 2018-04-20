@@ -12,9 +12,12 @@
 import logging
 logger = logging.getLogger('emonpy.http')
 
-import requests
+import datetime as dt
+import pytz as tz
+
 import numpy as np
 import pandas as pd
+import requests
 import json
 
 from .emoncms import EmoncmsException, Emoncms, Input, Feed
@@ -34,6 +37,20 @@ class HttpEmoncms(Emoncms):
         return HttpInput(self, node, name)
         
     
+    def post(self, data, time=None):
+        logger.debug('Requesting to bulk post data')
+        
+        if time is None:
+            time = dt.datetime.now(tz.utc)
+        
+        # Convert time to UTC UNIX timestamp in seconds
+        parameters = {
+            'time': pd.to_datetime(time).tz_convert(self.timezone).value//10**9, #.astype(np.int64)//10**9
+            'data': json.dumps(data.parse(time))
+        }
+        return self._request('input/bulk?', parameters)
+        
+    
     def create_feed(self, name, datatype, engine, options=None, tag=''):
         logger.debug('Requesting to create feed with name "%s"', name)
         
@@ -41,7 +58,8 @@ class HttpEmoncms(Emoncms):
             'name':name, 
             'tag':tag, 
             'datatype':datatype, 
-            'engine':engine }
+            'engine':engine
+        }
         
         if options is not None:
             parameters['options'] = options
@@ -94,40 +112,7 @@ class HttpEmoncms(Emoncms):
             
         except ValueError:
             raise EmoncmsException("Invalid JSON String returned to be parsed: " + response_text)
-
-
-    def bulk_post(self, post):
-        data = []
-        for n in post.nodes:
-            d = []
-            d.append(n.diff)
-            d.append(n.node_id)
-            for v in n.values:
-                d.append(v)
-            data.append(d)
-        parameters = {'data': json.dumps(data)}
-        if post.offset is not None:
-            parameters.update({'offset': post.offset})
-        if post.sent_at is not None:
-            parameters.update({'sentat': post.sent_at})
-        if post.time is not None:
-            parameters.update({'time': post.time})
-        return self._request('input/bulk?', parameters)
-
-
-class BulkPost(list):
-    def __init__(self, nodes, offset=None, sent_at=None, time=None):
-        self.nodes = nodes
-        self.offset = offset
-        self.sent_at = sent_at
-        self.time = time
-    
-class Node():
-    def __init__(self, diff, node_id, *values):
-        self.diff = diff
-        self.node_id = node_id
-        self.values = values
-    
+        
 
 class HttpInput(Input):
 
@@ -136,8 +121,8 @@ class HttpInput(Input):
         
         parameters = {"fulljson": json.dumps({self.name: value})}
         if time is not None:
-            # Convert times to UTC UNIX timestamps
-            parameters["time"] = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9 #.astype(np.int64)//10**6
+            # Convert time to UTC UNIX timestamp in seconds
+            parameters["time"] = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9 #.astype(np.int64)//10**9
         
         response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters)
         

@@ -15,6 +15,9 @@ logger = logging.getLogger('emonpy.emoncms')
 import datetime
 import pytz as tz
 
+import pandas as pd
+
+
 class Emoncms(object):
     """
     The Emoncms object implements basic communication and enables e.g. the acquisition 
@@ -239,6 +242,57 @@ class Feed(object):
             :class:`pandas.tslib.Timestamp` or datetime
         """
         raise NotImplementedError()
+
+
+class EmoncmsData(list):
+
+    def __init__(self, timezone='UTC'):
+        self.timezone = timezone
+        
+    
+    def add(self, time, node, name, value):
+        # Convert time to UTC UNIX timestamp in seconds
+        timestamp = pd.to_datetime(time).tz_convert(self.timezone).value//10**9 #.astype(np.int64)//10**9
+        
+        for data in self:
+            if data.timestamp == timestamp and data.node == node:
+                data.add(name, value)
+                break
+        else:
+            self.append(Data(timestamp, node, name, value))
+        
+        self.sort(key=lambda data: data.timestamp)
+        
+    
+    def parse(self, time):
+        # Convert time to UTC UNIX timestamp in seconds
+        timestamp = pd.to_datetime(time).tz_convert(self.timezone).value//10**9 #.astype(np.int64)//10**9
+        
+        result = []
+        for data in self:
+            result.append(data.parse(timestamp))
+            
+        return result
+        
+
+class Data(object):
+
+    def __init__(self, timestamp, node, name, value):
+        self.timestamp = timestamp
+        self.node = node
+        self.namevalues = []
+        self.add(name, value)
+    
+
+    def add(self, name, value):
+        self.namevalues.append({ name: value })
+    
+
+    def parse(self, reference):
+        result = [self.timestamp - reference, self.node]
+        result.extend(self.namevalues)
+        
+        return result
     
 
 class EmoncmsException(Exception):

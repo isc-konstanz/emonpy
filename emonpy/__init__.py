@@ -15,4 +15,5 @@ logging.basicConfig(level=logging.INFO)
 
 from . import emoncms
 from .emoncms import Emoncms
+from .emoncms import EmoncmsData
 from .emoncms import EmoncmsException
