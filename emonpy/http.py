@@ -48,7 +48,7 @@ class HttpEmoncms(Emoncms):
             'time': pd.to_datetime(time).tz_convert(self.timezone).value//10**9, #.astype(np.int64)//10**9
             'data': json.dumps(data.parse(time))
         }
-        return self._request('input/bulk?', parameters)
+        return self._request('input/bulk?', parameters, method='POST')
         
     
     def create_feed(self, name, datatype, engine, options=None, tag=''):
@@ -90,19 +90,25 @@ class HttpEmoncms(Emoncms):
         return self._request_json('feed/fetch.json?', parameters)
         
     
-    def _request(self, action, parameters={}):
+    def _request(self, action, parameters={}, method='GET'):
         parameters['apikey'] = self.apikey
         
-        response = requests.get(self.address + action, params=parameters)
+        if (method.upper() == 'POST'):
+            response = requests.post(self.address + action, data=parameters)
+        else:
+            response = requests.get(self.address + action, params=parameters)
+        
+        if response.status_code != 200:
+            raise EmoncmsException("Response returned with error " + response.status_code + ": " + response.reason)
         
         if response.text == 'false':
             raise EmoncmsException("Response returned false")
         
-        return response
+        return response.text
         
     
-    def _request_json(self, action, parameters={}):
-        response_text = self._request(action, parameters).text
+    def _request_json(self, action, parameters={}, method='GET'):
+        response_text = self._request(action, parameters, method=method)
         try:
             response = json.loads(response_text)
             if 'success' in response and not response['success']:
@@ -124,7 +130,7 @@ class HttpInput(Input):
             # Convert time to UTC UNIX timestamp in seconds
             parameters["time"] = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9 #.astype(np.int64)//10**9
         
-        response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters)
+        response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters, method='POST')
         
         return response['success']
         
@@ -143,9 +149,7 @@ class HttpFeed(Feed):
                       'end': endstamp, 
                       'interval': interval }
         
-        response = self.connection._request('feed/data.json?', parameters)
-        
-        datastr = response.text
+        datastr = self.connection._request('feed/data.json?', parameters)
         dataarr = np.array(eval(datastr))
         if len(dataarr) > 0:
             data = pd.Series(data=dataarr[:,1], index=dataarr[:,0], name='data')
@@ -174,5 +178,5 @@ class HttpFeed(Feed):
                       'time': timestamp, 
                       'value': float(value) }
         
-        self.connection._request('feed/update.json?', parameters)
+        return self.connection._request('feed/update.json?', parameters)
         
