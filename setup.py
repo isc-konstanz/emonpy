@@ -20,7 +20,7 @@ except ImportError:
 here = path.abspath(path.dirname(__file__))
 
 
-VERSION = '0.1.2'
+VERSION = '0.1.3'
 
 DESCRIPTION = 'Emonpy provides a set of functions to communicate with an emoncms webserver.'
 

@@ -25,9 +25,9 @@ from .emoncms import EmoncmsException, Emoncms, Input, Feed
 
 class HttpEmoncms(Emoncms):
     
-    def __init__(self, address, api_key, timezone='UTC'):
+    def __init__(self, address, apikey, timezone='UTC'):
         self.address = address
-        self.apikey = api_key
+        self.apikey = apikey
         self.timezone = timezone
         
         logger.debug('Registering connection to emoncms webserver "%s"', self.address)
@@ -37,7 +37,7 @@ class HttpEmoncms(Emoncms):
         return HttpInput(self, node, name)
         
     
-    def post(self, data, time=None):
+    def post(self, data, time=None, **kwargs):
         logger.debug('Requesting to bulk post data')
         
         if time is None:
@@ -48,10 +48,10 @@ class HttpEmoncms(Emoncms):
             'time': pd.to_datetime(time).tz_convert(self.timezone).value//10**9, #.astype(np.int64)//10**9
             'data': json.dumps(data.parse(time))
         }
-        return self._request('input/bulk?', parameters, method='POST')
+        return self._request('input/bulk?', parameters, method='POST', **kwargs)
         
     
-    def create_feed(self, name, datatype, engine, options=None, tag=''):
+    def create_feed(self, name, datatype, engine, options=None, tag='', **kwargs):
         logger.debug('Requesting to create feed with name "%s"', name)
         
         parameters = {
@@ -64,14 +64,14 @@ class HttpEmoncms(Emoncms):
         if options is not None:
             parameters['options'] = options
         
-        response = self._request_json('feed/create.json?', parameters)
+        response = self._request_json('feed/create.json?', parameters, **kwargs)
         return HttpFeed(self, int(response['feedid']))
         
     
-    def list_feeds(self):
+    def list_feeds(self, **kwargs):
         logger.debug('Requesting to retrieve feed list')
         
-        feeds_json = self._request_json('feed/list.json?')
+        feeds_json = self._request_json('feed/list.json?', **kwargs)
         feeds = []
         for feed in feeds_json:
             feeds.append(HttpFeed(self, feed))
@@ -90,8 +90,11 @@ class HttpEmoncms(Emoncms):
         return self._request_json('feed/fetch.json?', parameters)
         
     
-    def _request(self, action, parameters={}, method='GET'):
-        parameters['apikey'] = self.apikey
+    def _request(self, action, parameters={}, method='GET', **kwargs):
+        if 'apikey' in kwargs:
+            parameters['apikey'] = kwargs.get('apikey')
+        else:
+            parameters['apikey'] = self.apikey
         
         if (method.upper() == 'POST'):
             response = requests.post(self.address + action, data=parameters)
@@ -99,7 +102,7 @@ class HttpEmoncms(Emoncms):
             response = requests.get(self.address + action, params=parameters)
         
         if response.status_code != 200:
-            raise EmoncmsException("Response returned with error " + response.status_code + ": " + response.reason)
+            raise EmoncmsException("Response returned with error " + str(response.status_code) + ": " + response.reason)
         
         if response.text == 'false':
             raise EmoncmsException("Response returned false")
@@ -107,8 +110,8 @@ class HttpEmoncms(Emoncms):
         return response.text
         
     
-    def _request_json(self, action, parameters={}, method='GET'):
-        response_text = self._request(action, parameters, method=method)
+    def _request_json(self, action, parameters={}, method='GET', **kwargs):
+        response_text = self._request(action, parameters, method=method, **kwargs)
         try:
             response = json.loads(response_text)
             if 'success' in response and not response['success']:
@@ -122,7 +125,7 @@ class HttpEmoncms(Emoncms):
 
 class HttpInput(Input):
 
-    def post(self, value, time=None):
+    def post(self, value, time=None, **kwargs):
         logger.debug('Requesting to post data to input %s of node %s: %d', self.node, self.node, value)
         
         parameters = {"fulljson": json.dumps({self.name: value})}
@@ -130,14 +133,14 @@ class HttpInput(Input):
             # Convert time to UTC UNIX timestamp in seconds
             parameters["time"] = pd.to_datetime(time).tz_convert(self.connection.timezone).value//10**9 #.astype(np.int64)//10**9
         
-        response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters, method='POST')
+        response = self.connection._request_json('input/post/'+str(self.node)+'?', parameters, method='POST', **kwargs)
         
         return response['success']
         
 
 class HttpFeed(Feed):
     
-    def data(self, start, end, interval, timezone='UTC'):
+    def data(self, start, end, interval, timezone='UTC', **kwargs):
         logger.debug('Requesting data from feed %i', self._id)
         
         # Convert times to UTC UNIX timestamps
@@ -149,7 +152,7 @@ class HttpFeed(Feed):
                       'end': endstamp, 
                       'interval': interval }
         
-        datastr = self.connection._request('feed/data.json?', parameters)
+        datastr = self.connection._request('feed/data.json?', parameters, **kwargs)
         dataarr = np.array(eval(datastr))
         if len(dataarr) > 0:
             data = pd.Series(data=dataarr[:,1], index=dataarr[:,0], name='data')
@@ -169,7 +172,7 @@ class HttpFeed(Feed):
         return data
         
     
-    def update(self, value, time):
+    def update(self, value, time, **kwargs):
         logger.debug('Requesting to update data point at %s of feed %i: %d', time.strftime('%d.%m.%Y %H:%M:%S'), self._id, value)
         
         timestamp = pd.to_datetime(time).tz_localize(self.connection.timezone).value//10**9
@@ -178,5 +181,5 @@ class HttpFeed(Feed):
                       'time': timestamp, 
                       'value': float(value) }
         
-        return self.connection._request('feed/update.json?', parameters)
+        return self.connection._request('feed/update.json?', parameters, **kwargs)
         

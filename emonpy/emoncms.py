@@ -49,14 +49,14 @@ class Emoncms(object):
         str or unicode
     """
 
-    def __init__(self, address, api_key, timezone='UTC', method='HTTP'):
+    def __init__(self, address, apikey, timezone='UTC', method='HTTP'):
         if method.lower() == 'http':
             from . import http
             self.__class__ = http.HttpEmoncms
         else:
             raise ValueError('Invalid emoncms connection method "{}"'.method)
         
-        self.__init__(address, api_key, timezone)
+        self.__init__(address, apikey, timezone)
         
     
     def input(self, node, name):
@@ -82,7 +82,7 @@ class Emoncms(object):
         raise NotImplementedError()
         
     
-    def create_feed(self, name, datatype, engine, options=None, tag=''):
+    def create_feed(self, name, datatype, engine, options=None, tag='', **kwargs):
         """
         Create a new feed on the emoncms web server and its 
         corresponding :class:`Feed` reference object.
@@ -120,7 +120,7 @@ class Emoncms(object):
         raise NotImplementedError()
         
     
-    def list_feeds(self):
+    def list_feeds(self, **kwargs):
         """
         Acquire a list of all available :class:`Feed` reference objects, 
         enabling e.g. to retrieve logged emoncms feed data.
@@ -192,7 +192,7 @@ class Feed(object):
             raise EmoncmsException('Invalid feed type "{0}" passed while instantiation: {1}'.format(type(feed), str(feed)))
         
     
-    def data(self, start, end, interval, timezone='UTC'):
+    def data(self, start, end, interval, timezone='UTC', **kwargs):
         """
         Retrieves logged emoncms feed data and returns the fetched time values
         as pandas series.
@@ -227,7 +227,7 @@ class Feed(object):
         raise NotImplementedError()
         
     
-    def update(self, value, time):
+    def update(self, value, time, **kwargs):
         """
         Updates a single feed data point.
             
