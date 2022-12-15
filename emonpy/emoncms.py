@@ -57,8 +57,7 @@ class Emoncms(object):
             raise ValueError('Invalid emoncms connection method "{}"'.method)
         
         self.__init__(address, apikey, timezone)
-        
-    
+
     def input(self, node, name):
         """
         Acquire a :class:`Input` reference object, enabling e.g. to post
@@ -80,7 +79,6 @@ class Emoncms(object):
             :class:`Input`
         """
         raise NotImplementedError()
-        
     
     def create_feed(self, name, datatype, engine, options=None, tag='', **kwargs):
         """
@@ -118,7 +116,6 @@ class Emoncms(object):
             :class:`Feed`
         """
         raise NotImplementedError()
-        
     
     def list_feeds(self, **kwargs):
         """
@@ -131,8 +128,7 @@ class Emoncms(object):
             lsit of :class:`Feed`
         """
         raise NotImplementedError()
-        
-    
+
     def feed(self, feedid):
         """
         Acquire a :class:`Feed` reference object, enabling e.g. to retrieve
@@ -149,7 +145,7 @@ class Emoncms(object):
             :class:`Feed`
         """
         raise NotImplementedError()
-    
+
 
 class Input(object):
     
@@ -158,7 +154,7 @@ class Input(object):
         
         self.node = node
         self.name = name
-    
+
 
 class Feed(object):
     
@@ -190,8 +186,7 @@ class Feed(object):
             
         else:
             raise EmoncmsException('Invalid feed type "{0}" passed while instantiation: {1}'.format(type(feed), str(feed)))
-        
-    
+
     def data(self, start, end, interval, timezone='UTC', **kwargs):
         """
         Retrieves logged emoncms feed data and returns the fetched time values
@@ -225,8 +220,7 @@ class Feed(object):
             :class:`pandas.Series`
         """
         raise NotImplementedError()
-        
-    
+
     def update(self, value, time, **kwargs):
         """
         Updates a single feed data point.
@@ -248,8 +242,7 @@ class EmoncmsData(list):
 
     def __init__(self, timezone='UTC'):
         self.timezone = timezone
-        
-    
+
     def add(self, time, node, name, value):
         # Convert time to UTC UNIX timestamp in seconds
         timestamp = pd.to_datetime(time).tz_convert(self.timezone).value//10**9 #.astype(np.int64)//10**9
@@ -262,8 +255,7 @@ class EmoncmsData(list):
             self.append(Data(timestamp, node, name, value))
         
         self.sort(key=lambda data: data.timestamp)
-        
-    
+
     def parse(self, time):
         # Convert time to UTC UNIX timestamp in seconds
         timestamp = pd.to_datetime(time).tz_convert(self.timezone).value//10**9 #.astype(np.int64)//10**9
@@ -282,11 +274,9 @@ class Data(object):
         self.node = node
         self.namevalues = []
         self.add(name, value)
-    
 
     def add(self, name, value):
         self.namevalues.append({ name: value })
-    
 
     def parse(self, reference):
         result = [self.timestamp - reference, self.node]
