@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     emonpy.http
-    ~~~~~
+    ~~~~~~~~~~~
     
     This module implements the HTTP communication with an emoncms web server.
     It provides inherited objects, to handle actual function calls to access 
@@ -10,26 +10,25 @@
     
 """
 import logging
-logger = logging.getLogger('emonpy.http')
-
-import datetime as dt
-import pytz as tz
-
 import numpy as np
 import pandas as pd
+import pytz as tz
+import datetime as dt
 import requests
 import json
 
 from .emoncms import EmoncmsException, Emoncms, Input, Feed
 
+logger = logging.getLogger('emonpy.http')
+
 
 class HttpEmoncms(Emoncms):
-    
-    def __init__(self, address, apikey, timezone='UTC'):
+
+    def __init__(self, address='http://localhost/', apikey='', timezone=tz.UTC):
+        self.timezone = timezone
         self.address = address
         self.apikey = apikey
-        self.timezone = timezone
-        
+
         logger.debug('Registering connection to emoncms webserver "%s"', self.address)
         
     
@@ -85,18 +84,17 @@ class HttpEmoncms(Emoncms):
     
     def fetch(self, feeds):
         logger.debug('Requesting to fetch last values of feed list')
-        
+
         parameters = {'ids': ','.join(str(feed._id) for feed in feeds.values())}
         return self._request_json('feed/fetch.json?', parameters)
-        
-    
-    def _request(self, action, parameters={}, method='GET', **kwargs):
+
+    def _request(self, action, parameters, method='GET', **kwargs):
         if 'apikey' in kwargs:
             parameters['apikey'] = kwargs.get('apikey')
         else:
             parameters['apikey'] = self.apikey
-        
-        if (method.upper() == 'POST'):
+
+        if method.upper() == 'POST':
             response = requests.post(self.address + action, data=parameters)
         else:
             response = requests.get(self.address + action, params=parameters)
@@ -108,9 +106,11 @@ class HttpEmoncms(Emoncms):
             raise EmoncmsException("Response returned false")
         
         return response.text
-        
-    
-    def _request_json(self, action, parameters={}, method='GET', **kwargs):
+
+
+    def _request_json(self, action, parameters=None, method='GET', **kwargs):
+        if parameters is None:
+            parameters = {}
         response_text = self._request(action, parameters, method=method, **kwargs)
         try:
             response = json.loads(response_text)

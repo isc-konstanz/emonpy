@@ -49,16 +49,15 @@ class Emoncms(object):
         str or unicode
     """
 
-    def __init__(self, address, apikey, timezone='UTC', method='HTTP'):
+    def __init__(self, *args, method='HTTP', **kwargs):
         if method.lower() == 'http':
-            from . import http
-            self.__class__ = http.HttpEmoncms
+            from .http import HttpEmoncms
+            self.__class__ = HttpEmoncms
         else:
             raise ValueError('Invalid emoncms connection method "{}"'.method)
         
-        self.__init__(address, apikey, timezone)
-        
-    
+        self.__init__(*args, **kwargs)
+
     def input(self, node, name):
         """
         Acquire a :class:`Input` reference object, enabling e.g. to post
@@ -131,14 +130,14 @@ class Emoncms(object):
             lsit of :class:`Feed`
         """
         raise NotImplementedError()
-        
-    
-    def feed(self, feedid):
+
+    # noinspection PyShadowingNames
+    def feed(self, id):
         """
         Acquire a :class:`Feed` reference object, enabling e.g. to retrieve
         logged emoncms feed data.
         
-        :param feedid:
+        :param id:
             the unique identifier of the feed.
         :type id:
             int
@@ -190,9 +189,8 @@ class Feed(object):
             
         else:
             raise EmoncmsException('Invalid feed type "{0}" passed while instantiation: {1}'.format(type(feed), str(feed)))
-        
-    
-    def data(self, start, end, interval, timezone='UTC', **kwargs):
+
+    def data(self, start, end, **kwargs):
         """
         Retrieves logged emoncms feed data and returns the fetched time values
         as pandas series.
@@ -206,18 +204,7 @@ class Feed(object):
             the time, until which feed data should be retrieved.
         :type end:
             :class:`pandas.tslib.Timestamp` or datetime
-            
-        :param interval:
-            the time interval between single retrieved values in milliseconds.
-        :type interval:
-            int
-        
-        :param timezone: 
-            the timezone, to which the retrieved data will be converted to.
-            See http://en.wikipedia.org/wiki/List_of_tz_database_time_zones for a list of 
-            valid time zones.
-        :type timezone:
-            str or unicode
+
         
         :returns: 
             the retrieved feed data time values.
