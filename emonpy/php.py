@@ -7,11 +7,12 @@
 """
 from __future__ import annotations
 import logging
+import os
 import pytz as tz
 import pandas as pd
 import datetime as dt
 from struct import unpack
-from .emoncms import Emoncms, Feed
+from .emoncms import EmoncmsException, Emoncms, Feed
 
 logger = logging.getLogger('emonpy.php')
 
@@ -38,9 +39,34 @@ class PhpFeed(Feed):
         self.name = name
         self.file = connection.dir + f"/phptimeseries/feed_{self.id}.MYD"
 
+    def contains(self,
+                 start: pd.Timestamp | dt.datetime = None,
+                 end: pd.Timestamp | dt.datetime = None) -> bool:
+        if not os.path.isfile(self.file):
+            return False
+
+        with open(self.file, 'rb') as file:
+            def unpack_time(line):
+                line_tuple = unpack("<xIf", line)
+                timestamp = int(line_tuple[0])
+                return pd.Timestamp(dt.datetime.utcfromtimestamp(timestamp)).tz_localize(tz.UTC)
+
+            if start is not None:
+                if start < unpack_time(file.read(9)):
+                    return False
+            if end is not None:
+                file.seek(-9, os.SEEK_END)
+                if end > unpack_time(file.read(9)):
+                    return False
+
+        return True
+
     def data(self,
              start: pd.Timestamp | dt.datetime = None,
              end: pd.Timestamp | dt.datetime = None) -> pd.Series:
+
+        if not self.contains(start, end):
+            raise EmoncmsException(f"Phptimeseries file {self.file} does not exist or contain time interval")
 
         epoch = dt.datetime(1970, 1, 1, tzinfo=tz.UTC)
         if start is None:
