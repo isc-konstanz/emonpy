@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
     emonpy.http
-    ~~~~~
+    ~~~~~~~~~~~
     
     This module implements the HTTP communication with an emoncms web server.
     It provides inherited objects, to handle actual function calls to access 
@@ -10,26 +10,24 @@
     
 """
 import logging
-
-logger = logging.getLogger('emonpy.http')
-
-import datetime as dt
-import pytz as tz
-
 import numpy as np
 import pandas as pd
+import pytz as tz
+import datetime as dt
 import requests
 import json
 
 from .emoncms import EmoncmsException, Emoncms, Input, Feed
 
+logger = logging.getLogger('emonpy.http')
+
 
 class HttpEmoncms(Emoncms):
 
-    def __init__(self, address, apikey, timezone='UTC'):
+    def __init__(self, address='http://localhost/', apikey='', timezone=tz.UTC):
+        self.timezone = timezone
         self.address = address
         self.apikey = apikey
-        self.timezone = timezone
 
         logger.debug('Registering connection to emoncms webserver "%s"', self.address)
 
@@ -84,13 +82,13 @@ class HttpEmoncms(Emoncms):
         parameters = {'ids': ','.join(str(feed._id) for feed in feeds.values())}
         return self._request_json('feed/fetch.json?', parameters)
 
-    def _request(self, action, parameters={}, method='GET', **kwargs):
+    def _request(self, action, parameters, method='GET', **kwargs):
         if 'apikey' in kwargs:
             parameters['apikey'] = kwargs.get('apikey')
         else:
             parameters['apikey'] = self.apikey
 
-        if (method.upper() == 'POST'):
+        if method.upper() == 'POST':
             response = requests.post(self.address + action, data=parameters)
         else:
             response = requests.get(self.address + action, params=parameters)
@@ -103,7 +101,9 @@ class HttpEmoncms(Emoncms):
 
         return response.text
 
-    def _request_json(self, action, parameters={}, method='GET', **kwargs):
+    def _request_json(self, action, parameters=None, method='GET', **kwargs):
+        if parameters is None:
+            parameters = {}
         response_text = self._request(action, parameters, method=method, **kwargs)
         try:
             response = json.loads(response_text)
@@ -135,13 +135,13 @@ class HttpInput(Input):
 class HttpFeed(Feed):
 
     def data(self, start, end, interval, timezone='UTC', **kwargs):
-        logger.debug('Requesting data from feed %i', self._id)
+        logger.debug('Requesting data from feed %i', self.id)
 
         # Convert times to UTC UNIX timestamps
         startstamp = pd.to_datetime(start).tz_convert(self.connection.timezone).value // 10 ** 6
         endstamp = pd.to_datetime(end).tz_convert(self.connection.timezone).value // 10 ** 6
 
-        parameters = {'id': self._id,
+        parameters = {'id': self.id,
                       'start': startstamp,
                       'end': endstamp,
                       'interval': interval}
@@ -151,7 +151,7 @@ class HttpFeed(Feed):
         if len(dataarr) > 0:
             data = pd.Series(data=dataarr[:, 1], index=dataarr[:, 0], name='data')
 
-            logger.debug('Received %d values from feed %i', len(data), self._id)
+            logger.debug('Received %d values from feed %i', len(data), self.id)
 
             # The first and last values returned will be the nearest values to 
             # the specified timestamps and can be outside of the actual interval.
@@ -167,11 +167,11 @@ class HttpFeed(Feed):
 
     def update(self, value, time, **kwargs):
         logger.debug('Requesting to update data point at %s of feed %i: %d',
-                     time.strftime('%d.%m.%Y %H:%M:%S'), self._id, value)
+                     time.strftime('%d.%m.%Y %H:%M:%S'), self.id, value)
 
         timestamp = pd.to_datetime(time).tz_localize(self.connection.timezone).value // 10 ** 9
 
-        parameters = {'id': self._id,
+        parameters = {'id': self.id,
                       'time': timestamp,
                       'value': float(value)}
 
