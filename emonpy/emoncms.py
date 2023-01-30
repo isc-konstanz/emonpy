@@ -187,6 +187,10 @@ class Feed(object):
         else:
             raise EmoncmsException('Invalid feed type "{0}" passed while instantiation: {1}'.format(type(feed), str(feed)))
 
+    @property
+    def id(self):
+        return self._id
+
     def data(self, start, end, interval, timezone='UTC', **kwargs):
         """
         Retrieves logged emoncms feed data and returns the fetched time values
