@@ -176,7 +176,7 @@ class MySqlFeed(Feed):
         result = pd.DataFrame(data=values, index=times, columns=[column])
         return result.tz_convert(self.timezone)
 
-    # write values from Pandas Series into table 
+    # write values from Pandas Series into table
     def write(self, data: pd.Series, **_):
         epoch = dt.datetime(1970, 1, 1, tzinfo=tz.UTC)
 
