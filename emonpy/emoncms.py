@@ -53,6 +53,12 @@ class Emoncms(object):
         if method.lower() == 'http':
             from . import http
             self.__class__ = http.HttpEmoncms
+        elif method.lower() == 'php':
+            from .php import PhpEmoncms
+            self.__class__ = PhpEmoncms
+        elif method.lower() in ['sql', 'mysql']:
+            from .mysql import MysqlEmoncms
+            self.__class__ = MysqlEmoncms
         else:
             raise ValueError('Invalid emoncms connection method "{}"'.method)
         
